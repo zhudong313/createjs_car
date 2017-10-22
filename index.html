@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+	<title>car</title>
+	<style>
+		*{margin: 0;padding: 0;}
+		html,body{ height: 100%; }
+		body{overflow:hidden; background: #000;}
+		#stage{ position: absolute; height: auto; }
+	</style>
+</head>
+<body>
+	<canvas id="stage" width="750" height="1200"></canvas>
+	<script src="https://cdn.bootcss.com/EaselJS/0.8.0/easeljs.min.js"></script>
+    <script src="https://cdn.bootcss.com/tweenjs/0.6.2/tweenjs.min.js"></script>
+    <script src="https://cdn.bootcss.com/SoundJS/0.6.0/soundjs.min.js"></script>
+    <script src="https://cdn.bootcss.com/PreloadJS/0.6.0/preloadjs.min.js"></script>
+    <script>
+    var loader=new createjs.LoadQueue(true,"./assets/");
+		loader.installPlugin(createjs.Sound);//加载声音插件，即可加载音频
+		loader.loadManifest([//配置加载资源
+			/**图片配置**/
+			{src:"img/_123go.png",id:"_123go"},
+			{src:"img/car_bg.png",id:"car"},
+			{src:"img/hinder.png",id:"obstacle"},
+			{src:"img/playBtn.png",id:"play"},
+			{src:"img/paused.png",id:"paused"},
+			{src:"img/continue.png",id:"continue"},
+			{src:"img/replayBtn.png",id:"replay"},
+			{src:"img/map.jpg",id:"bg"},
+			{src:"img/Bitmap1bb.png",id:"obstacle_0"},
+			{src:"img/Bitmap1bbb.png",id:"obstacle_1"},
+			{src:"img/Bitmap1bbbb.png",id:"obstacle_2"},
+			{src:"img/Bitmap1ggg.png",id:"super"},
+			{src:"img/lunzi1.png",id:"wheel"},
+			/**以下是音频**/
+		    {src: "sound/countDown.mp3", id: "s_countDown"},
+		    {src: "sound/start.mp3", id: "s_start"},
+		    {src: "sound/bg.mp3", id: "s_bg"},
+		    {src: "sound/huoSound.mp3", id: "s_huo"},
+		    {src: "sound/mutongSound.mp3", id: "s_mutong"},
+		    {src: "sound/die.mp3", id: "s_die"},
+		    {src: "sound/addSpeedSound.mp3", id: "s_addSpeed"},
+		]);
+		loader.on("error",function(a,b,c){
+			console.log(a,b,c);
+		})
+
+		//等资源全部加载完毕时触发
+		loader.on("complete",function(){
+			var oCar={
+				canvas:document.querySelector('#stage'),
+				stage:new createjs.Stage("stage"),
+				speed:10,
+				maxSpeed:20,
+				initSpeed:10,
+				oAll:{},
+				tickAll:{},
+				eventAll:{},
+				senceFun:{},
+				sound:{},
+				cW:null,
+				cH:null,
+				resize(){
+					var _this=this;
+					var viewW=document.documentElement.clientWidth;
+					var viewH=document.documentElement.clientHeight;
+					var cW=_this.canvas.width;
+					var cH=_this.canvas.height;
+					var cssW,cssBottom,cssLeft;
+					_this.cW=cW;
+					_this.cH=cH;
+					if(viewW>cW){
+						if(viewW/viewH>cW/cH){
+							if(viewW<viewH){//平板
+								//width:cW; bottom:0/>0; left:>0;
+								console.log("平板")
+								var bottom=viewH-cH;
+								cssW=cW+"px";
+								cssBottom=(bottom>0?bottom/2:0)+"px";
+								cssLeft=(viewW-cW)/2+"px";
+							}
+							else{//pc
+								//width:cW/2; bottom:0/>0; left:>0;
+								console.log("pc")
+								var bottom=viewH-cH/2;
+								cssW=cW/2+"px";
+								cssBottom=(bottom>0?bottom/2:0)+"px";
+								cssLeft=(viewW-cW/2)/2+"px";
+							}
+						}
+					}
+					else{//手机
+						//width:100%;  bottom:0/>0; left:0;
+						console.log("手机")
+						var bottom=viewH-cH*viewW/cW;
+						cssW="100%";
+						cssBottom=(bottom>0?bottom/2:0)+"px";
+						cssLeft="0px";
+					}
+					_this.canvas.setAttribute("style","width:"+cssW+";left:"+cssLeft+";bottom:"+cssBottom+";");
+				},
+				sence(){//场景操作、开始游戏、继续、暂停、重新开始
+					var _this=this;
+					_this.oAll.bgContainer=_this.bg();
+					_this.oAll.carContainer=_this.car();
+					_this.oAll.obstacleContainer=_this.obstacle();
+					_this.oAll.statusContainer=_this.status(_this.oAll.carContainer.car);
+					_this.oAll.layerContainer=_this.layer();
+					var _123go=_this._123go();
+					
+					/*****123go动画*****/
+					function _123go_ani(callback){
+						var toStart={
+							scaleX:2,
+							scaleY:2
+						};
+						var toResult={
+							scaleX:1,
+							scaleY:1
+						};
+						var time=1000;
+						var animations=_123go.spriteSheet.animations;
+						_this.sound.s_countDown=createjs.Sound.play("s_countDown");//开声音
+						_123go.set({alpha:1});
+						for(let i=0;i<animations.length;i++){
+							createjs.Tween.get(_123go).wait(time*i).to(toResult,time/2,createjs.Ease.getPowIn(5)).wait(time/2).call(function(){
+								if(i==animations.length-1){//动画结束
+									this.set({alpha:0});
+									if(typeof callback=="function"){
+										createjs.Sound.play("s_start");//开声音
+										window.setTimeout(function(){
+											_this.sound.bgSound=createjs.Sound.play("s_bg", createjs.Sound.INTERRUPT_EARLY, 0, 0, -1);//开声音背景音乐
+										callback();
+										},100);
+									}
+								}
+								else{
+									this.set(toStart);
+									this.gotoAndPlay(animations[i+1]);
+									_this.sound.s_countDown.play();
+								}
+							});
+						}
+					};
+					
+					/********开始******/
+					var layer=_this.oAll.layerContainer.layer;
+					var play=_this.oAll.layerContainer.play;
+					var paused=_this.oAll.layerContainer.paused;
+					var continuing=_this.oAll.layerContainer.continuing;
+					var replay=_this.oAll.layerContainer.replay;
+					function playFun(){
+						layer.set({alpha:0});
+						play.set({alpha:0});
+						//123go动画
+						_123go_ani(function(){
+							_this.game();
+							paused.set({alpha:1});
+						});
+					}
+					play.set({alpha:1});
+					play.addEventListener("mousedown",playFun);
+					
+					/**********暂停*******/
+					function pausedFun(){
+						layer.set({alpha:1});
+						continuing.set({alpha:1});
+						ganmeOverFun();
+					}
+					paused.addEventListener("mousedown",pausedFun);
+
+					/***********继续*******/
+					function continuingFun(){
+						_this.sound.bgSound.play();//停止背景音乐
+						layer.set({alpha:0});
+						paused.set({alpha:1});
+						continuing.set({alpha:0});
+						for(var i in _this.tickAll){
+							createjs.Ticker.addEventListener("tick",_this.tickAll[i]);
+						}
+						for(var j in _this.eventAll){
+							var eventArr=_this.eventAll[j].event;
+							var eventFun=_this.eventAll[j][j];
+							for(var k in eventArr){
+								_this.canvas.addEventListener(eventArr[k],eventFun);
+							}
+						}
+					}
+					continuing.addEventListener("mousedown",continuingFun);
+
+					/***重新开始**/
+					function replayFun(){
+						_this.stage.removeAllChildren();
+						_this.stage.removeAllEventListeners();
+						for(var i in _this.oAll){
+							delete _this.oAll[i];
+						}
+						for(var i in _this.tickAll){
+							delete _this.tickAll[i];
+						}
+						for(var i in _this.senceFun){
+							delete _this.senceFun[i];
+						}
+						for(var i in _this.sound){
+							delete _this.sound[i];
+						}
+						createjs.Ticker.removeEventListener("tick",update);//计时器移出
+						_this.sence();
+						_this.senceFun.playFun();
+					};
+					replay.addEventListener("mousedown",replayFun);
+
+
+					/*****游戏结束******/
+					function ganmeOverFun(time){
+						_this.sound.bgSound.stop();//停止背景音乐
+						paused.set({alpha:0});
+						for(var i in _this.tickAll){
+							createjs.Ticker.removeEventListener("tick",_this.tickAll[i]);
+						}
+						for(var j in _this.eventAll){
+							var eventArr=_this.eventAll[j].event;
+							var eventFun=_this.eventAll[j][j];
+							for(var k in eventArr){
+								_this.canvas.removeEventListener(eventArr[k],eventFun);
+							}
+						}
+						if(time){
+							setTimeout(function(){
+								layer.alpha=1;
+								replay.alpha=1;	
+							},time);
+						};
+					};
+
+					//按浏览器刷新频率的计时器
+					function update(){
+						_this.stage.update();//更新
+						//console.log(createjs.Ticker.getMeasuredFPS())
+					}
+					createjs.Ticker.addEventListener("tick",update);//计时器
+
+					//记录开始、暂停、继续
+					_this.senceFun={
+						playFun,
+						pausedFun,
+						continuingFun,
+						replayFun,
+						ganmeOverFun
+					};
+				},
+				layer(){//遮罩对象层
+					var _this=this;
+					var container=new createjs.Container();
+					var layer=new createjs.Shape();//形状
+					layer.graphics.beginFill("rgba(0,0,0,0.8)").drawRect(0,0,_this.cW,_this.cH);
+					container.addChild(layer);
+					_this.stage.addChild(container);
+					_this.stage.setChildIndex(container,_this.stage.children.length-1);
+
+					/********开始******/
+					var playBtnImg=loader.getResult("play");
+					var play=new createjs.Bitmap(playBtnImg);
+					play.x=(_this.cW-playBtnImg.width)/2;
+					play.y=(_this.cH-playBtnImg.height)/2;
+					play.set({alpha:0});
+					container.addChild(play);
+
+					/*********暂停******/
+					var pausedBtnImg=loader.getResult("paused");
+					var paused=new createjs.Bitmap(pausedBtnImg);
+					paused.x=_this.cW-pausedBtnImg.width-10;
+					paused.y=10;
+					paused.set({alpha:0});
+					container.addChild(paused);
+
+					/*********继续******/
+					var continuingBtnImg=loader.getResult("continue");
+					var continuing=new createjs.Bitmap(continuingBtnImg);
+					continuing.x=(_this.cW-continuingBtnImg.width)/2;
+					continuing.y=(_this.cH-continuingBtnImg.height)/2;
+					continuing.set({alpha:0});
+					container.addChild(continuing);
+
+					/*********重玩******/
+					var replayBtnImg=loader.getResult("replay");
+					var replay=new createjs.Bitmap(replayBtnImg);
+					replay.x=(_this.cW-replayBtnImg.width)/2;
+					replay.y=(_this.cH-replayBtnImg.height)/2;
+					replay.set({alpha:0});
+					container.addChild(replay);
+
+					return {
+						container,
+						layer,
+						play,
+						paused,
+						continuing,
+						replay
+					};
+				},
+				_123go(callback){//倒计时对象
+					var _this=this;
+					var _123goImg=loader.getResult("_123go");
+					var width=_123goImg.width/4;
+					var height=_123goImg.height;
+					var _123goSprite=new createjs.SpriteSheet({//实例化精灵表绘制器
+		                "images":[_123goImg],
+		                "frames":{"regX":width/2,"regY":height/2,"width":width,"height":height,"count":4},
+		                "animations":{
+		                    "one":2,"two":1,"three":0,"go":3
+		                }
+		            });
+		            var _123go=new createjs.Sprite(_123goSprite,"one");
+		            _123go.scaleX=2;
+					_123go.scaleY=2;
+	            	_123go.x=(_this.cW-width*2)/2+width;
+					_123go.y=(_this.cH-height*2)/2+height;
+					_123go.alpha=0;
+					_this.stage.addChild(_123go);
+
+					return _123go;
+				},
+				bg(){//背景对象层
+					var _this=this;
+					var container=new createjs.Container();
+					var bg=new createjs.Shape();//形状 
+					var bgImg=loader.getResult("bg");
+					var width=bgImg.width;
+					var height=bgImg.height
+		        	bg.graphics.beginBitmapFill(bgImg).drawRect(0,0,width,height*2);
+					bg.y=-height;
+					container.addChild(bg);
+					_this.stage.addChild(container);
+					_this.stage.setChildIndex(container,0);//设置形状层级
+
+					return {
+						container,
+						bgImg,
+						bg,
+					};
+				},
+				car(){//车对象层
+					var _this=this;
+					var container=new createjs.Container();
+					var carImg=loader.getResult("car");
+					var width=carImg.width/4;//车的宽度
+					var height=carImg.height;
+					var carSprite=new createjs.SpriteSheet({//实例化精灵表绘制器
+						"framerate": 30,// 这指定的是SpriteSheet帧速率，即看到帧速率
+		                "images":[carImg],
+		                "frames":{"regX":width/2,"regY":height/2,"width":width,"height":height,"count":4},
+		                "animations":{
+		                    "run":{
+		                        frames:[0,1,2],//精灵表每一帧的位置
+		                        next:"run",//当精灵表循环完后的下一步动作
+		                        speed:0.1,//精灵表播放速度
+		                    }, 
+		                    "die":{
+		                        frames:[3],
+		                        next:"die",
+		                        speed:0,
+		                    }
+		                }
+		            });
+					var car=new createjs.Sprite(carSprite,"run");
+					car.x=width/2;//x,y随中心点改变而改变；修正车在容器中的位置
+					car.y=height/2;
+					container.addChild(car);
+
+					container.x=(_this.cW-width)/2;
+					container.y=_this.cH-height*2;
+					_this.stage.addChild(container);
+
+					car.inject={//对car对象注入自己的属性
+						status:"",//设置car形状对象status属性状态
+						setTimeout:null//记录car的计时器
+					}
+					return {
+						container,
+						car,
+					};
+				},
+				status(car){//汽车状态层
+					var _this=this;
+					var container=new createjs.Container();
+					var car_data=car.getBounds();
+					var width=car_data.width;
+					var height=car_data.height;
+
+					/**超级状态**/
+					var status_SuperImg=loader.getResult("super");
+					var status_Super=new createjs.Bitmap(status_SuperImg);
+					status_Super.set({
+						regX:status_SuperImg.width/2,
+						regY:status_SuperImg.height/2,
+						x:car.x,
+						y:car.y+50,
+						scaleX:2,
+						scaleY:2,
+						alpha:0
+					});
+					container.addChild(status_Super);
+
+					/**撞毁状态**/
+					var stauts_obstacle=[];
+					for(var i=0;i<3;i++){
+						let sImg=loader.getResult("obstacle_"+i);
+						let s=new createjs.Bitmap(sImg);
+						s.set({
+							regX:sImg.width/2,
+							regY:sImg.height/2,
+							x:car.x,
+							y:car.y-150,
+							alpha:0
+						});
+
+						stauts_obstacle.push(s);
+						container.addChild(s);
+					};
+
+					/***轮子***/
+					var status_wheelImg=loader.getResult("wheel");
+					var status_wheel=new createjs.Bitmap(status_wheelImg);
+					status_wheel.set({
+						regX:status_wheelImg.width/2,
+						regY:status_wheelImg.height/2,
+						x:car.x,
+						y:car.y,
+						scaleX:1,
+						scaleY:1,
+						alpha:0
+					});
+					container.addChild(status_wheel);
+
+					container.x=(_this.cW-width)/2;
+					container.y=_this.cH-height*2;
+					_this.stage.addChild(container);
+
+					return {
+						container,
+						status_Super:{
+							status_Super_Tween:null,//记录对应状态的动画
+							status_Super//状态对象
+						},
+						stauts_obstacle:{
+							stauts_obstacle_Tween:null,//记录对应状态的动画
+							stauts_obstacle//状态对象
+						},
+						status_wheel
+					}
+				},
+				obstacle(y){//障碍物层
+					var _this=this;
+					if(_this.oAll.obstacleContainer){
+						var obstacleImg=loader.getResult("obstacle");
+						var width=obstacleImg.width/7;
+						var height=obstacleImg.height;
+						var obstacleSprite=new createjs.SpriteSheet({//实例化精灵表绘制器
+							"framerate": 30,// 这指定的是SpriteSheet帧速率，即看到帧速率
+			                "images":[obstacleImg],
+			                "frames":{"regX":0,"regY":0,"width":width,"height":height,"count":7},
+			                "animations":{
+			                    "obstacle_0":0, "obstacle_1":1,"obstacle_2":2,
+			                    "obstacle_super":{
+			                        frames:[3,4,5,6],
+			                        next:"obstacle_super",
+			                        speed:0.5,
+			                    }
+			                }
+			            });
+
+						var obstacle=new createjs.Sprite(obstacleSprite);
+						var animations=obstacleSprite.animations;
+			            var super_or_obstacle=Math.random();
+			            var randomNum=Math.floor(Math.random()*(animations.length-1));//0-2
+			            if(super_or_obstacle>0.1 && super_or_obstacle<0.95){//障碍物
+			            	obstacle.gotoAndPlay(animations[randomNum]);
+			            }
+			            else{//super
+			            	obstacle.gotoAndPlay(animations[3]);
+			            }
+			            var randomPos=Math.floor(Math.random()*(animations.length-1));//0-2
+			            obstacle.x=(_this.cW-width)/2+((width+50)*(randomPos-1));//50是调整位置
+			            obstacle.y=y-height;
+						_this.oAll.obstacleContainer.addChild(obstacle);
+
+						obstacle.inject={
+							isHit:false//设置obstacle形状是否碰撞过；true表示有；false表示没有
+						}
+						return obstacle;
+					}
+					else{
+						var container=new createjs.Container();
+						_this.stage.addChild(container);
+						_this.stage.setChildIndex(container,1);
+						return container;
+					}
+				},
+				hit(carContainer,obstacle){//碰撞检测
+					if(obstacle.inject.isHit){//已经碰撞过不在进入
+						return;
+					}
+					var _this=this;
+					var statusContainer=_this.oAll.statusContainer.container;//状态容器层
+					var status_Super=_this.oAll.statusContainer.status_Super.status_Super;
+					var status_Super_Tween=_this.oAll.statusContainer.status_Super.status_Super_Tween;
+					var stauts_obstacle=_this.oAll.statusContainer.stauts_obstacle.stauts_obstacle;
+					var stauts_obstacle_Tween=_this.oAll.statusContainer.stauts_obstacle.stauts_obstacle_Tween;
+					var status_wheel=_this.oAll.statusContainer.status_wheel;
+					
+					var car=carContainer.car;
+					var carCon=carContainer.container;//汽车容器
+					var carCon_wh=carCon.getBounds();
+
+					var obstacle_wh=obstacle.getBounds();
+
+					/*var carCon_lt=obstacle.globalToLocal(carCon.x,carCon.y);
+					var carCon_rt=obstacle.globalToLocal(carCon.x+carCon_wh.width,carCon.y);
+					var carCon_lb=obstacle.globalToLocal(carCon.x,carCon.y+carCon_wh.height);
+					var carCon_rb=obstacle.globalToLocal(carCon.x+carCon_wh.width,carCon.y+carCon_wh.height);
+					var carCon_lm=obstacle.globalToLocal(carCon.x,carCon.y+carCon_wh.height/2);
+					var carCon_rm=obstacle.globalToLocal(carCon.x+carCon_wh.width,carCon.y+carCon_wh.height/2);
+					var carCon_mm=obstacle.globalToLocal(carCon.x+carCon_wh.width/2,carCon.y);
+
+					//hitTest效果太低，建议自己家判断
+					if(obstacle.hitTest(carCon_lt.x,carCon_lt.y) || obstacle.hitTest(carCon_rt.x,carCon_rt.y) ||  obstacle.hitTest(carCon_lb.x,carCon_lb.y) ||  obstacle.hitTest(carCon_rb.x,carCon_rb.y) ||  obstacle.hitTest(carCon_lm.x,carCon_lm.y) ||  obstacle.hitTest(carCon_rm.x,carCon_rm.y) ||  obstacle.hitTest(carCon_mm.x,carCon_mm.y)){
+
+					}*/
+
+					var y=obstacle.y+obstacle.parent.y;
+					var x=obstacle.x;
+
+					//console.log(carCon.y,y,carCon.x,x)
+					//console.log(y-carCon.y>-obstacle_wh.height,y-carCon.y<carCon_wh.height,Math.abs(x-carCon.x)<obstacle_wh.width)
+					if(y-carCon.y>-obstacle_wh.height && y-carCon.y<carCon_wh.height && Math.abs(x-carCon.x)<obstacle_wh.width){
+						var currentAnimation=obstacle.currentAnimation;
+						var animations=obstacle.spriteSheet.animations;
+						
+						obstacle.inject.isHit=true;
+						if(currentAnimation==animations[animations.length-1]){//超级
+							var loopBool=true;
+							obstacle.parent.removeChild(obstacle);//删除障碍
+							status_Super.alpha=1;
+							_this.stage.setChildIndex(statusContainer,1);
+							if(status_Super_Tween==null){
+								_this.sound.addSpeedSound=createjs.Sound.play("s_addSpeed", createjs.Sound.INTERRUPT_EARLY, 0, 0, -1);
+								status_Super_Tween=_this.oAll.statusContainer.status_Super.status_Super_Tween=createjs.Tween.get(status_Super,{loop:true}).wait(50).to({alpha:0},50);//循环动画
+							}
+							else{
+								status_Super_Tween.setPaused(false);
+							}
+							car.inject.status="super";
+							_this.speed=_this.maxSpeed;
+							clearTimeout(car.inject.setTimeout);
+							car.inject.setTimeout=window.setTimeout(function(){
+								if(_this.oAll.statusContainer.status_Super.status_Super_Tween){
+									_this.sound.addSpeedSound.stop();
+									status_Super_Tween.setPaused(true);
+								}
+								status_Super.alpha=0;
+								car.inject.status="";
+								_this.speed=_this.initSpeed;
+								//console.log("超结束")
+							},5000);
+							//console.log("超")
+						}
+						else{
+							if(car.inject.status=="super"){
+								var endY=obstacle.y-400;
+								createjs.Sound.play("s_huo");//声音
+								createjs.Tween.get(obstacle).to({y:endY},200,createjs.Ease.getPowOut(5)).call(function(){
+									this.parent.removeChild(this);
+								});
+								//console.log("弹")
+							}
+							else{
+								//console.log("撞");
+								createjs.Sound.play("s_mutong");//声音
+								var time=100;
+								var endY=obstacle.y-time*2;
+								_this.senceFun.ganmeOverFun(time*3);
+								createjs.Tween.get(obstacle).to({y:endY,alpha:0},time*3,createjs.Ease.getPowOut(5)).call(function(){
+									this.parent.removeChild(this);
+								});
+								var wheel_endY=status_wheel.y;
+								status_wheel.alpha=1;
+								createjs.Tween.get(status_wheel).to({rotation:200,y:wheel_endY-200},time*3);
+								createjs.Tween.get(car).to({rotation:270},time*3).call(function(){
+									this.gotoAndPlay("die");
+									createjs.Sound.play("s_die");//声音
+								});
+								_this.stage.setChildIndex(statusContainer,3);
+								for(let k=0;k<stauts_obstacle.length;k++){
+									stauts_obstacle[k].alpha=1;
+									createjs.Tween.get(stauts_obstacle[k]).wait(time*(k+1)).call(function(){
+										this.alpha=0;
+									});
+								};
+
+							}
+						}
+					}
+				},
+				game(){//游戏逻辑
+					var _this=this;
+					var bgContainer=_this.oAll.bgContainer;
+					var carContainer=_this.oAll.carContainer;
+					var obstacleContainer=_this.oAll.obstacleContainer;
+					var statusContainer=_this.oAll.statusContainer;
+
+					//背景移动
+					function bgMove(){
+						bgContainer.container.y+=_this.speed;
+						if(bgContainer.container.y>=bgContainer.bgImg.height){
+							bgContainer.container.y=0;
+						}
+					};
+					createjs.Ticker.addEventListener("tick",bgMove);
+
+					//汽车移动;//移动的是汽车容器
+					var carPos=0;
+					var start_x=0;
+					var startMustBool=false;//保证touchstart或者mousedown先触发
+					function carMove(e){
+						if(e.changedTouches){
+							var event=e.changedTouches[0];
+						}
+						else{
+							var event=e;
+						}
+						//console.log(e.type)
+						var x=event.pageX;
+						var posX;
+						var width=carContainer.car.getBounds().width;
+						if(e.type=='touchstart' || e.type=="mousedown"){
+							startMustBool=true;
+							start_x=x;
+						}
+						else if(e.type=='touchmove'){
+							e.preventDefault();
+						}
+						else if((e.type=='touchend' || e.type=='touchcancel' || e.type=="mouseup") && startMustBool){
+							startMustBool=false;
+							var dValue=Math.abs(x-start_x);//移动的距离
+							if(x-start_x>0){//右
+								if(carPos!=1 && dValue>50){
+									carPos+=1;
+									posX=carContainer.container.x+width+50;//50是调整位置
+								}
+							}
+							else{//左
+								if(carPos!=-1 && dValue>50){
+									carPos-=1;
+									posX=carContainer.container.x-width-50;//50是调整位置
+								}
+							}
+							if(posX!=null){
+								createjs.Tween.get(carContainer.container).to({x:posX},100);
+								createjs.Tween.get(statusContainer.container).to({x:posX},100);
+							}
+						}
+					};
+					var carMoveEvent;
+					if("ontouchstart" in window){
+						_this.canvas.addEventListener("touchstart",carMove);
+						_this.canvas.addEventListener("touchmove",carMove);
+						_this.canvas.addEventListener("touchend",carMove);
+						carMoveEvent=["touchstart","touchmove","touchend"]
+					}
+					else{
+						_this.canvas.addEventListener("mousedown",carMove);
+						_this.canvas.addEventListener("mouseup",carMove);
+						carMoveEvent=["mousedown","mouseup"]
+					}
+
+					//障碍物
+					function obstacleMove(){
+						var obstacle_distance=700;//障碍物相隔距离
+						var randomDistance=Math.round(100*Math.random())+200;
+						//添加障碍物
+						if(obstacleContainer.y%obstacle_distance<_this.speed){
+							_this.obstacle(-obstacleContainer.y);//障碍物坐标是负值
+						}
+						obstacleContainer.y+=_this.speed;
+						//删除障碍物多余数据
+						for(var i in obstacleContainer.children){
+							var obstacle=obstacleContainer.children[i];
+							if(obstacle.y+obstacleContainer.y>=_this.cH){//移出可视窗口的距离即清除
+								obstacleContainer.removeChild(obstacle);
+							}
+							else{
+								//碰撞应该是汽车容器与障碍物检测。
+								_this.hit(carContainer,obstacle);
+							}
+						}
+						//console.log(obstacleContainer.children.length);
+					};
+					createjs.Ticker.addEventListener("tick",obstacleMove);
+
+					//记录计时器监听函数
+					_this.tickAll={
+						bgMove,
+						obstacleMove
+					};
+					_this.eventAll={
+						"carMove":{
+							carMove,
+							event:carMoveEvent
+						}
+					};
+
+				},
+				init(){
+					var _this=this;
+					createjs.Ticker.setFPS(60);//配置fps
+					createjs.Touch.enable(_this.stage);//开启触屏事件
+
+					_this.resize();
+					window.addEventListener("resize",function(){
+						_this.resize();
+					});
+
+					_this.sence();
+				}
+			};
+			oCar.init();
+		});
+    </script>
+</body>
+</html>
