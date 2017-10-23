@@ -53,11 +53,17 @@
 			console.log(a);
 		})*/
 		var loaderNum=0;
+		var loaderNumA=0;
 		var loadingNode=document.querySelector('#loading');
 		loader.on("fileload",function(a){
 			loaderNum++;
 			var percent=Math.floor(loaderNum/manifest.length)*100+"%";
 			loadingNode.querySelector("i").style.width=percent;
+			console.log(loaderNum);
+		});
+		loader.on("progress",function(a){
+			loaderNumA++;
+			console.log(loaderNumA);
 		});
 
 		//等资源全部加载完毕时触发
