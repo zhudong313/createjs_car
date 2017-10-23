@@ -48,22 +48,19 @@
 		    {src: "sound/die.mp3", id: "s_die"},
 		    {src: "sound/addSpeedSound.mp3", id: "s_addSpeed"},
 		];
-		loader.loadManifest(manifest);
-		/*loader.on("error",function(a){
-			console.log(a);
-		})*/
-		var loaderNum=0;
-		var loaderNumA=0;
 		var loadingNode=document.querySelector('#loading');
+		loader.loadManifest(manifest);
+
+		loader.on("error",function(a){
+			loadingNode.parentNode.removeChild(loadingNode);
+		})
+
+		var loaderNum=0;
 		loader.on("fileload",function(a){
 			loaderNum++;
-			var percent=Math.floor(loaderNum/manifest.length)*100+"%";
+			var percent=Math.floor(loaderNum/manifest.length*100)+"%";
 			loadingNode.querySelector("i").style.width=percent;
-			console.log(loaderNum);
-		});
-		loader.on("progress",function(a){
-			loaderNumA++;
-			console.log(loaderNumA);
+			//console.log(percent,loaderNum,manifest.length);
 		});
 
 		//等资源全部加载完毕时触发
