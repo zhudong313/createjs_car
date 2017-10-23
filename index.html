@@ -9,7 +9,7 @@
 		html,body{ height: 100%; }
 		body{overflow:hidden; background: #000;}
 		#stage{ position: absolute; height: auto; }
-		#loading{ position: fixed; left: 0; top: 0; align-items: center;justify-content: center; font-size: 50px; color: #fff; width: 100%; height: 100%; background: rgba(0,0,0,0.6);  z-index: 9999;}
+		#loading{ position: fixed; left: 0; top: 0; display: flex; align-items: center;justify-content: center; font-size: 50px; color: #fff; width: 100%; height: 100%; background: rgba(0,0,0,0.6);  z-index: 9999;}
 	</style>
 </head>
 <body>
@@ -55,7 +55,7 @@
 		loader.on("progress",function(a){
 			loaderNum++;
 			var percent=Math.floor(loaderNum/manifest.length)*100+"%";
-			loadingNode.innerHTML="<span>"+percent+"</span>";
+			loadingNode.innerHTML=percent;
 		});
 
 		//等资源全部加载完毕时触发
