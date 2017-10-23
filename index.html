@@ -9,10 +9,12 @@
 		html,body{ height: 100%; }
 		body{overflow:hidden; background: #000;}
 		#stage{ position: absolute; height: auto; }
+		#loading{ position: fixed; left: 0; top: 0; align-items: center;justify-content: center; font-size: 50px; color: #fff; width: 100%; height: 100%; background: rgba(0,0,0,0.6);  z-index: 9999;}
 	</style>
 </head>
 <body>
 	<canvas id="stage" width="750" height="1200"></canvas>
+	<div id="loading"></div>
 	<script src="https://cdn.bootcss.com/EaselJS/0.8.0/easeljs.min.js"></script>
     <script src="https://cdn.bootcss.com/tweenjs/0.6.2/tweenjs.min.js"></script>
     <script src="https://cdn.bootcss.com/SoundJS/0.6.0/soundjs.min.js"></script>
@@ -20,7 +22,7 @@
     <script>
     var loader=new createjs.LoadQueue(true,"./assets/");
 		loader.installPlugin(createjs.Sound);//加载声音插件，即可加载音频
-		loader.loadManifest([//配置加载资源
+		var manifest=[//配置加载资源
 			/**图片配置**/
 			{src:"img/123go.png",id:"_123go"},
 			{src:"img/car_bg.png",id:"car"},
@@ -43,13 +45,22 @@
 		    {src: "sound/mutongSound.mp3", id: "s_mutong"},
 		    {src: "sound/die.mp3", id: "s_die"},
 		    {src: "sound/addSpeedSound.mp3", id: "s_addSpeed"},
-		]);
-		loader.on("error",function(a,b,c){
-			console.log(a,b,c);
-		})
+		];
+		loader.loadManifest(manifest);
+		/*loader.on("error",function(a){
+			console.log(a);
+		})*/
+		var loaderNum=0;
+		var loadingNode=document.querySelector('#loading');
+		loader.on("progress",function(a){
+			loaderNum++;
+			var percent=Math.floor(loaderNum/manifest.length)*100+"%";
+			loadingNode.innerHTML="<span>"+percent+"</span>";
+		});
 
 		//等资源全部加载完毕时触发
 		loader.on("complete",function(){
+			loadingNode.parentNode.removeChild(loadingNode);
 			var oCar={
 				canvas:document.querySelector('#stage'),
 				stage:new createjs.Stage("stage"),
